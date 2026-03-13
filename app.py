@@ -50,7 +50,7 @@ if page == "Inicio (Landing Page)":
         * Analizar la evolución de los salarios.
         * Comprender las habilidades técnicas clave para el futuro.
         
-        **Desarrollado por:** Feiber Guzmán
+        **Desarrollado por:** Feibert Alirio Guzmán Pérez
         """)
         st.info("Utiliza el menú lateral para explorar el Dashboard interactivo.")
 
