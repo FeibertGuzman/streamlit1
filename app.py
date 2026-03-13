@@ -14,10 +14,7 @@ st.set_page_config(
 # --- FUNCIÓN PARA CARGAR DATOS ---
 @st.cache_data
 def load_data():
-    # Descarga desde Kaggle usando la librería kagglehub
     path = kagglehub.dataset_download("shree0910/ai-and-data-science-job-market-dataset-20202026")
-    
-    # Buscamos el archivo CSV en la ruta descargada
     files = [f for f in os.listdir(path) if f.endswith('.csv')]
     if not files:
         return None
@@ -25,90 +22,81 @@ def load_data():
     full_path = os.path.join(path, files[0])
     df = pd.read_csv(full_path)
     
-    # ARREGLO TÉCNICO: Normaliza nombres de columnas (quita espacios y pone guiones bajos)
-    df.columns = df.columns.str.strip().str.replace(' ', '_')
+    # OPTIMIZACIÓN DEFINITIVA: 
+    # Forzamos a que todas las columnas sigan el formato esperado: minúsculas y sin espacios
+    df.columns = df.columns.str.strip().str.replace(' ', '_').str.lower()
     
     return df
 
-# Carga inicial
 df = load_data()
 
-# --- NAVEGACIÓN LATERAL ---
+# Mapeo de columnas para que el código no se rompa si el CSV cambia
+# Buscamos nombres que contengan palabras clave
+def find_col(df, keyword):
+    for col in df.columns:
+        if keyword in col:
+            return col
+    return df.columns[0] # Fallback a la primera columna
+
+# --- NAVEGACIÓN ---
 st.sidebar.title("Navegación")
 page = st.sidebar.radio("Ir a:", ["Inicio (Landing Page)", "Dashboard de Análisis"])
 
-# --- PÁGINA DE INICIO (LANDING PAGE) ---
 if page == "Inicio (Landing Page)":
     st.title("🚀 Análisis del Mercado Laboral en AI & Data Science (2020–2026)")
-    
     col1, col2 = st.columns([1, 1])
-    
     with col1:
         st.markdown("""
         ### Sobre el Proyecto
-        Este proyecto ha sido desarrollado para el curso de **Talento Tech**, enfocado en el análisis de tendencias 
-        del mercado laboral en áreas de Inteligencia Artificial y Ciencia de Datos.
-        
-        **Objetivos del Proyecto:**
-        * Identificar los roles más demandados.
-        * Analizar la evolución de los salarios.
-        * Comprender las habilidades técnicas clave para el futuro.
-        
-        **Desarrollado por:** Feiber Guzmán
+        Desarrollado para el curso de **Talento Tech**.
+        **Autor:** Feibert Guzmán
         """)
-        st.info("Utiliza el menú lateral para explorar el Dashboard interactivo.")
-
+        st.info("Usa el menú lateral para navegar.")
     with col2:
-        # Aquí se inserta la imagen que mencionaste
-        st.image("image1.png", caption="Visualización del Ecosistema de Datos", use_container_width=True)
+        try:
+            st.image("image1.png", use_container_width=True)
+        except:
+            st.warning("Imagen image1.png no encontrada.")
 
-    st.divider()
-    st.subheader("Ficha Técnica del Dataset")
-    st.write("""
-    El dataset contiene datos sintéticos que simulan patrones reales de contratación, incluyendo:
-    - Roles laborales y características de empresas.
-    - Habilidades técnicas requeridas y niveles educativos.
-    - Rangos salariales y ubicaciones geográficas.
-    """)
-
-# --- PÁGINA DEL DASHBOARD ---
 elif page == "Dashboard de Análisis":
     st.title("📊 Panel de Control e Insights")
     
     if df is not None:
+        # Identificación automática de columnas críticas
+        c_job = find_col(df, 'job')      # Busca algo como 'job_title'
+        c_sal = find_col(df, 'salary')   # Busca algo como 'salary_usd'
+        c_loc = find_col(df, 'locat')    # Busca algo como 'location'
+        c_emp = find_col(df, 'employ')   # Busca algo como 'employment_type'
+        c_year = find_col(df, 'year')    # Busca algo como 'year'
+
         # --- FILTROS ---
         st.sidebar.header("Filtros Globales")
-        job_role = st.sidebar.multiselect("Selecciona el Rol:", options=df['Job_Title'].unique(), default=df['Job_Title'].unique()[:3])
+        unique_jobs = df[c_job].unique()
+        job_role = st.sidebar.multiselect("Selecciona el Rol:", options=unique_jobs, default=unique_jobs[:3])
         
-        df_filtered = df[df['Job_Title'].isin(job_role)]
+        df_filtered = df[df[c_job].isin(job_role)]
 
-        # --- MÉTRICAS CLAVE ---
+        # --- MÉTRICAS ---
         m1, m2, m3 = st.columns(3)
         m1.metric("Total de Registros", f"{len(df_filtered):,}")
-        m2.metric("Salario Promedio", f"${df_filtered['Salary_USD'].mean():,.2f}")
-        m3.metric("Países Representados", df_filtered['Location'].nunique())
+        m2.metric("Salario Promedio", f"${df_filtered[c_sal].mean():,.2f}")
+        m3.metric("Países", df_filtered[c_loc].nunique())
 
         st.divider()
 
         # --- GRÁFICOS ---
         col_g1, col_g2 = st.columns(2)
-
         with col_g1:
-            st.subheader("Distribución Salarial por Rol")
-            fig1 = px.box(df_filtered, x='Job_Title', y='Salary_USD', color='Job_Title', template="plotly_dark")
+            st.subheader("Distribución Salarial")
+            fig1 = px.box(df_filtered, x=c_job, y=c_sal, color=c_job, template="plotly_dark")
             st.plotly_chart(fig1, use_container_width=True)
-
         with col_g2:
-            st.subheader("Demanda por Tipo de Empleo")
-            fig2 = px.pie(df_filtered, names='Employment_Type', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+            st.subheader("Tipo de Empleo")
+            fig2 = px.pie(df_filtered, names=c_emp, hole=0.4)
             st.plotly_chart(fig2, use_container_width=True)
 
-        st.subheader("Evolución de Salarios (2020-2026)")
-        fig3 = px.line(df, x='Year', y='Salary_USD', color='Job_Title', markers=True)
+        st.subheader("Evolución de Salarios")
+        fig3 = px.line(df_filtered, x=c_year, y=c_sal, color=c_job, markers=True)
         st.plotly_chart(fig3, use_container_width=True)
-        
-        # Tabla de datos
-        with st.expander("Ver Datos Crutos"):
-            st.dataframe(df_filtered)
     else:
-        st.error("No se pudo cargar el dataset. Verifica la conexión con Kaggle.")
+        st.error("Error al cargar el dataset.")
