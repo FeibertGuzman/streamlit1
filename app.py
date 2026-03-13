@@ -24,6 +24,10 @@ def load_data():
     
     full_path = os.path.join(path, files[0])
     df = pd.read_csv(full_path)
+    
+    # ARREGLO TÉCNICO: Normaliza nombres de columnas (quita espacios y pone guiones bajos)
+    df.columns = df.columns.str.strip().str.replace(' ', '_')
+    
     return df
 
 # Carga inicial
@@ -50,7 +54,7 @@ if page == "Inicio (Landing Page)":
         * Analizar la evolución de los salarios.
         * Comprender las habilidades técnicas clave para el futuro.
         
-        **Desarrollado por:** Feibert Alirio Guzmán Pérez
+        **Desarrollado por:** Feiber Guzmán
         """)
         st.info("Utiliza el menú lateral para explorar el Dashboard interactivo.")
 
